@@ -1,0 +1,37 @@
+[
+    {
+        "name": "None",
+        "abbr": "V",
+        "value": null
+    },
+    {
+        "name": "King",
+        "abbr": "K",
+        "value": 0
+    },
+    {
+        "name": "Pawn",
+        "abbr": "P",
+        "value": 1
+    },
+    {
+        "name": "Knight",
+        "abbr": "N",
+        "value": 3
+    },
+    {
+        "name": "Bishop",
+        "abbr": "B",
+        "value": 4
+    },
+    {
+        "name": "Rook",
+        "abbr": "R",
+        "value": 5
+    },
+    {
+        "name": "Queen",
+        "abbr": "Q",
+        "value": 9
+    }
+]
