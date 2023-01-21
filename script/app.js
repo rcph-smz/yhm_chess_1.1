@@ -55,7 +55,7 @@ var Board = function () {
                 square.style.backgroundColor = "lightgreen"
                 touchedValidMoves = PieceMovement.movePieceByNotation(touchedPieceNotation, indexOfSquare)
 
-                console.log("touched", indexOfSquare, touchedValidMoves)
+                console.log("touched", indexOfSquare)
             }
             else if (isTouched && touchedPiece != piece && touchedValidMoves.includes(indexOfSquare)) {
                 // move
@@ -65,8 +65,21 @@ var Board = function () {
 
                 touchedSquare.style.backgroundColor = touchedSquare.getAttribute("data-color")
 
-                console.log("moved", indexOfSquare, touchedValidMoves)
+                console.log("moved", indexOfSquare)
             }
+            else if (isTouched && touchedPiece == piece) {
+                //cancel
+                touchedPiece = null
+                touchedSquare = null
+                isTouched = !isTouched
+
+                square.style.backgroundColor = square.getAttribute("data-color")
+
+                console.log("cancel", indexOfSquare)
+
+
+            }
+
         })
 
         if (indexOfSquare % 12 == 0) shiftSquare = !shiftSquare
@@ -107,6 +120,21 @@ var Board = function () {
     }
 
     Object.assign(squares, {
+        pawnAdvance: (() => {
+            // fix later / refactor later
+            const area = new Array()
+
+            for (let indexOfSquare = 50; indexOfSquare < 58; indexOfSquare++) {
+                area.push(indexOfSquare)
+                area.push(indexOfSquare + 60)
+            }
+            return area.sort((a, b) => {
+                return a - b
+            })
+        })()
+    })
+
+    Object.assign(squares, {
         getVisibleSquares: (() => {
             const visibleSquares = new Array()
             for (let indexOfSquare = 0; indexOfSquare < board.length; indexOfSquare++) {
@@ -122,6 +150,7 @@ var Board = function () {
             return board
         })()
     })
+
     return squares
 }()
 
@@ -276,7 +305,13 @@ class PieceMovement {
         const pieceMovement = (() => {
             switch (pieceOfKingdom[1]) {
                 case "Pawn": {
-                    return PieceMatrix.PawnMatrix(indexOfSquare, pieceBias).validMoves
+                    return Board.pawnAdvance.includes(indexOfSquare) ? PieceMatrix.PawnMatrix(indexOfSquare, pieceBias).validAdvance : PieceMatrix.PawnMatrix(indexOfSquare, pieceBias).validMoves
+                }
+                case "Rook": {
+                    return PieceMatrix.RookMatrix(indexOfSquare).validMoves
+                }
+                case "Knight": {
+                    return PieceMatrix.RookMatrix(indexOfSquare).validMoves
                 }
                 default: return
             }
@@ -304,11 +339,71 @@ class PieceMatrix {
         })
         Object.assign(matrix, {
             validAdvance: (() => {
-                return [24].map((indexOfValidMove) => {
+                return [12, 24].map((indexOfValidMove) => {
                     return (indexOfValidMove * bias) + indexOfSquare
                 })
             })()
         })
+        return matrix
+    }
+    static RookMatrix(indexOfSquare, bias) {
+        const matrix = new Object()
+        Object.assign(matrix, {
+            validMoves: (() => {
+                return (() => {
+                    const rookMatrices = new Array()
+                    for (let indexOfValidMove = 0; indexOfValidMove < 8; indexOfValidMove++) {
+                        rookMatrices.push(indexOfValidMove + indexOfSquare)
+                        rookMatrices.push(-indexOfValidMove + indexOfSquare)
+                        rookMatrices.push(12 * indexOfValidMove + indexOfSquare)
+                        rookMatrices.push(12 * -indexOfValidMove + indexOfSquare)
+                    }
+
+                    // console.log()
+                    return rookMatrices.filter((indexOfValidMove) => {
+                        return indexOfValidMove != indexOfSquare
+                    }).sort((a, b) => {
+                        return a - b
+                    })
+                })()
+            })()
+        })
+        Object.assign(matrix, {
+            validAttack: (() => {
+                return (() => {
+                    const rookMatrices = new Array()
+                    for (let indexOfValidMove = 0; indexOfValidMove < 8; indexOfValidMove++) {
+                        rookMatrices.push(indexOfValidMove + indexOfSquare)
+                        rookMatrices.push(-indexOfValidMove + indexOfSquare)
+                        rookMatrices.push(12 * indexOfValidMove + indexOfSquare)
+                        rookMatrices.push(12 * -indexOfValidMove + indexOfSquare)
+                    }
+
+                    // console.log()
+                    return rookMatrices.filter((indexOfValidMove) => {
+                        return indexOfValidMove != indexOfSquare
+                    }).sort((a, b) => {
+                        return a - b
+                    })
+                })()
+            })()
+        })
+        return matrix
+    }
+    static KnightMatrix(indexOfSquare, bias) {
+        //todo im tired fix these tomorrow
+        const matrix = new Object()
+        Object.assign(matrix, {
+            validMoves: [-17, -15, -10, -6, 6, 10, 15, 17].map((indexOfValidMove) => {
+                return indexOfValidMove + indexOfSquare
+            })
+        })
+        Object.assign(matrix, {
+            validMoves: [-17, -15, -10, -6, 6, 10, 15, 17].map((indexOfValidMove) => {
+                return indexOfValidMove + indexOfSquare
+            })
+        })
+
         return matrix
     }
 }
