@@ -26,12 +26,47 @@ var Board = function () {
     body.appendChild(boardWrapper)
 
     let shiftSquare = 0
+    //
+    // touched pieces are previous pieces e.g. touchedPiece,isTouched,touchedSquare
+    let touchedPiece = null
+    let isTouched = false
+    let touchedSquare = null
+    let touchedPieceNotation = "NN"
+    let touchedValidMoves = new Array()
+
+
     for (let indexOfSquare = 0; indexOfSquare < 168; ++indexOfSquare) {
         const square = document.createElement("div")
         square.setAttribute("class", "square")
         square.setAttribute("data-indexOfSquare", indexOfSquare)
         square.addEventListener("click", (squareEvent) => {
-            
+            const piece = square.children[0]
+            const styleOfSquare = square.getAttribute("data-color")
+            const hasPiece = (() => {
+                return square.children.length
+            })()
+            if (hasPiece && !isTouched) {
+                //touch
+                touchedPiece = piece
+                touchedSquare = square
+                isTouched = !isTouched
+                touchedPieceNotation = piece.getAttribute("data-piecenotation")
+
+                square.style.backgroundColor = "lightgreen"
+                touchedValidMoves = PieceMovement.movePieceByNotation(touchedPieceNotation, indexOfSquare)
+
+                console.log("touched", indexOfSquare, touchedValidMoves)
+            }
+            else if (isTouched && touchedPiece != piece && touchedValidMoves.includes(indexOfSquare)) {
+                // move
+                isTouched = !isTouched
+                touchedPieceNotation = "NN"
+                appendPieceByIndex(touchedPiece, indexOfSquare)
+
+                touchedSquare.style.backgroundColor = touchedSquare.getAttribute("data-color")
+
+                console.log("moved", indexOfSquare, touchedValidMoves)
+            }
         })
 
         if (indexOfSquare % 12 == 0) shiftSquare = !shiftSquare
@@ -157,14 +192,14 @@ var Init = function () {
     Object.assign(initialize, {
         initializeMatrix(piecesMatrix) {
             const visibleSquares = Board.getVisibleSquares
-            
+
             visibleSquares.forEach((square, allocateIndexOnMatrix) => {
                 const indexOfSquare = square.getAttribute("data-indexofsquare")
                 const parsedPiece = parseNotationToPiece(piecesMatrix[allocateIndexOnMatrix])
                 const kingdom = parsedPiece[0]
                 const piece = parsedPiece[1]
 
-                createPieceByIndex(kingdom,piece,indexOfSquare)
+                createPieceByIndex(kingdom, piece, indexOfSquare)
             })
 
         }
@@ -186,7 +221,7 @@ function capitalize(text) {
     return capitalizeString
 }
 function parseNotationToPiece(notation) {
-    if(!notation) return
+    if (!notation) return
     notation = notation.toUpperCase()
 
     const pieceName = new Array(2)
@@ -198,28 +233,81 @@ function parseNotationToPiece(notation) {
     const pieceCollection = Init.pieces
 
     kingdomCollection.forEach((kingdom, kingdomIndex) => {
-        if(kingdomNotation == kingdom[0]) pieceName[0] = kingdom
+        if (kingdomNotation == kingdom[0]) pieceName[0] = kingdom
     })
     pieceCollection.forEach((piece, indexOfPiece) => {
-        if(pieceNotation == piece["abbr"]) pieceName[1] = piece["name"]
+        if (pieceNotation == piece["abbr"]) pieceName[1] = piece["name"]
     })
 
     return pieceName
 }
+function parsePieceToNotation(kingdomNotation, pieceNotation) {
+    if (!kingdomNotation || !pieceNotation) return
+    kingdomNotation = capitalize(kingdomNotation)
+    pieceNotation = capitalize(pieceNotation)
 
+    const notation = new Array(2)
+
+    const kingdomCollection = Init.kingdoms
+    const pieceCollection = Init.pieces
+
+    kingdomCollection.forEach((kingdom, kingdomIndex) => {
+        if (kingdomNotation == kingdom) notation[0] = kingdom[0]
+    })
+    pieceCollection.forEach((piece, indexOfPiece) => {
+        if (pieceNotation == piece["name"]) notation[1] = piece["abbr"]
+    })
+
+    return notation
+}
+
+class PieceMovement {
+    static movePieceByNotation(notation, indexOfSquare) {
+
+        const pieceOfKingdom = parseNotationToPiece(notation)
+        const pieceBias = (() => {
+            switch (pieceOfKingdom[0]) {
+                case "White": return -1
+                case "Black": return 1
+                default: 0
+            }
+        })()
+
+        const pieceMovement = (() => {
+            switch (pieceOfKingdom[1]) {
+                case "Pawn": {
+                    return PieceMatrix.PawnMatrix(indexOfSquare, pieceBias).validMoves
+                }
+                default: return
+            }
+        })()
+        return pieceMovement
+    }
+}
 
 class PieceMatrix {
-    static PawnMatrix(kingdom) {
+    static PawnMatrix(indexOfSquare, bias) {
         const matrix = new Object()
         Object.assign(matrix, {
             validMoves: (() => {
-                return [12]
-            })
+                return [12].map((indexOfValidMove) => {
+                    return (indexOfValidMove * bias) + indexOfSquare
+                })
+            })()
         })
         Object.assign(matrix, {
             validAttack: (() => {
-                return [11, 13]
-            })
+                return [11, 13].map((indexOfValidMove) => {
+                    return (indexOfValidMove * bias) + indexOfSquare
+                })
+            })()
+        })
+        Object.assign(matrix, {
+            validAdvance: (() => {
+                return [24].map((indexOfValidMove) => {
+                    return (indexOfValidMove * bias) + indexOfSquare
+                })
+            })()
         })
         return matrix
     }
@@ -228,25 +316,27 @@ class PieceMatrix {
 
 // chess functions
 function createPiece(kingdomName, pieceName) {
-    if(kingdomName == "None" || pieceName == "None") return
+    if (kingdomName == "None" || pieceName == "None") return
 
     kingdomName = capitalize(kingdomName)
     pieceName = capitalize(pieceName)
 
     const piece = document.createElement("img")
     piece.setAttribute("class", "piece")
+    piece.setAttribute("data-piecenotation", parsePieceToNotation(kingdomName, pieceName).join(""))
     piece.src = `${Theme.themePath}/${kingdomName}${pieceName}.${Theme.spriteExtension}`
 
     return piece
 }
 function createPieceByIndex(kingdomName, pieceName, indexOfSquare) {
-    if(kingdomName == "None" || pieceName == "None") return
+    if (kingdomName == "None" || pieceName == "None") return
 
     kingdomName = capitalize(kingdomName)
     pieceName = capitalize(pieceName)
 
     const piece = document.createElement("img")
     piece.setAttribute("class", "piece")
+    piece.setAttribute("data-piecenotation", parsePieceToNotation(kingdomName, pieceName).join(""))
     piece.src = `${Theme.themePath}/${kingdomName}${pieceName}.${Theme.spriteExtension}`
 
     if (Board.getRawSquares[indexOfSquare].children.length > 0) return Board.getRawSquares[indexOfSquare].children[0]
