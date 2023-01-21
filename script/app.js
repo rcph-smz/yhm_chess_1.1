@@ -15,6 +15,81 @@ var Theme = function () {
 
     return theme
 }()
+
+
+var Board = function () {
+    // includes hidden squares
+
+    const body = document.body
+    const boardWrapper = document.createElement("div")
+    boardWrapper.setAttribute("class", "board_wrapper")
+    body.appendChild(boardWrapper)
+
+    let shiftSquare = 0
+    for (let indexOfSquare = 0; indexOfSquare < 168; ++indexOfSquare) {
+        const square = document.createElement("div")
+        square.setAttribute("class", "square")
+        square.setAttribute("data-indexOfSquare", indexOfSquare)
+        square.addEventListener("click", (squareEvent) => {
+            
+        })
+
+        if (indexOfSquare % 12 == 0) shiftSquare = !shiftSquare
+        if ((indexOfSquare + shiftSquare) % 2 == 0) {
+            square.style.backgroundColor = "#eeeed2"
+            square.setAttribute("data-color", "#eeeed2")
+        }
+        else {
+            square.style.backgroundColor = "rgba(0, 0, 0, 0.5)"
+            square.setAttribute("data-color", "rgba(0, 0, 0, 0.5)")
+        }
+
+        boardWrapper.appendChild(square)
+    }
+
+    const board = boardWrapper.children
+    const squares = new Object()
+
+    for (let indexOfSquare = 0; indexOfSquare < 14; indexOfSquare++) {
+        // removing pointerEvents just in case
+        board[indexOfSquare * 12].style.pointerEvents = "none"
+        board[indexOfSquare * 12 + 1].style.pointerEvents = "none"
+        board[indexOfSquare * 12 + 10].style.pointerEvents = "none"
+        board[indexOfSquare * 12 + 11].style.pointerEvents = "none"
+
+        board[indexOfSquare * 12].style.display = "none"
+        board[indexOfSquare * 12 + 1].style.display = "none"
+        board[indexOfSquare * 12 + 10].style.display = "none"
+        board[indexOfSquare * 12 + 11].style.display = "none"
+    }
+    for (let indexOfSquare = 0; indexOfSquare < 36; indexOfSquare++) {
+        // removing pointerEvents just in case
+        board[indexOfSquare + 132].style.pointerEvents = "none"
+        board[indexOfSquare].style.pointerEvents = "none"
+
+        board[indexOfSquare].style.display = "none"
+        board[indexOfSquare + 132].style.display = "none"
+    }
+
+    Object.assign(squares, {
+        getVisibleSquares: (() => {
+            const visibleSquares = new Array()
+            for (let indexOfSquare = 0; indexOfSquare < board.length; indexOfSquare++) {
+                if (board[indexOfSquare].style.display != "none") {
+                    visibleSquares.push(board[indexOfSquare])
+                }
+            }
+            return visibleSquares;
+        })()
+    })
+    Object.assign(squares, {
+        getRawSquares: (() => {
+            return board
+        })()
+    })
+    return squares
+}()
+
 var Init = function () {
 
     const initialize = new Object()
@@ -79,37 +154,25 @@ var Init = function () {
                 }
             ]
     })
+    Object.assign(initialize, {
+        initializeMatrix(piecesMatrix) {
+            const visibleSquares = Board.getVisibleSquares
+            
+            visibleSquares.forEach((square, allocateIndexOnMatrix) => {
+                const indexOfSquare = square.getAttribute("data-indexofsquare")
+                const parsedPiece = parseNotationToPiece(piecesMatrix[allocateIndexOnMatrix])
+                const kingdom = parsedPiece[0]
+                const piece = parsedPiece[1]
 
-    console.log(initialize.matrices)
+                createPieceByIndex(kingdom,piece,indexOfSquare)
+            })
+
+        }
+    })
 
     return initialize
 }()
-var Board = function () {
-    const body = document.body
-    const boardWrapper = document.createElement("div")
-    boardWrapper.setAttribute("class", "board_wrapper")
-    body.appendChild(boardWrapper)
-
-    let shiftSquare = 1
-    for (let indexOfSquare = 0; indexOfSquare < 64; ++indexOfSquare) {
-        const square = document.createElement("div")
-        square.setAttribute("class", "square")
-        square.setAttribute("data-indexOfSquare", indexOfSquare)
-
-        if (indexOfSquare % 8 == 0) shiftSquare = !shiftSquare
-        if ((indexOfSquare + shiftSquare) % 2 == 0) {
-            square.style.backgroundColor = "#eeeed2"
-            square.setAttribute("data-color", "#eeeed2")
-        }
-        else {
-            square.style.backgroundColor = "rgba(0, 0, 0, 0.5)"
-            square.setAttribute("data-color", "rgba(0, 0, 0, 0.5)")
-        }
-
-        boardWrapper.appendChild(square)
-    }
-    return Array.from(boardWrapper.children)
-}()
+Init.initializeMatrix(Init.matrices)
 
 // text functions 
 function capitalize(text) {
@@ -122,10 +185,51 @@ function capitalize(text) {
 
     return capitalizeString
 }
+function parseNotationToPiece(notation) {
+    if(!notation) return
+    notation = notation.toUpperCase()
+
+    const pieceName = new Array(2)
+
+    const kingdomNotation = notation.split("")[0]
+    const pieceNotation = notation.split("")[1]
+
+    const kingdomCollection = Init.kingdoms
+    const pieceCollection = Init.pieces
+
+    kingdomCollection.forEach((kingdom, kingdomIndex) => {
+        if(kingdomNotation == kingdom[0]) pieceName[0] = kingdom
+    })
+    pieceCollection.forEach((piece, indexOfPiece) => {
+        if(pieceNotation == piece["abbr"]) pieceName[1] = piece["name"]
+    })
+
+    return pieceName
+}
+
+
+class PieceMatrix {
+    static PawnMatrix(kingdom) {
+        const matrix = new Object()
+        Object.assign(matrix, {
+            validMoves: (() => {
+                return [12]
+            })
+        })
+        Object.assign(matrix, {
+            validAttack: (() => {
+                return [11, 13]
+            })
+        })
+        return matrix
+    }
+}
 
 
 // chess functions
 function createPiece(kingdomName, pieceName) {
+    if(kingdomName == "None" || pieceName == "None") return
+
     kingdomName = capitalize(kingdomName)
     pieceName = capitalize(pieceName)
 
@@ -136,6 +240,8 @@ function createPiece(kingdomName, pieceName) {
     return piece
 }
 function createPieceByIndex(kingdomName, pieceName, indexOfSquare) {
+    if(kingdomName == "None" || pieceName == "None") return
+
     kingdomName = capitalize(kingdomName)
     pieceName = capitalize(pieceName)
 
@@ -143,17 +249,17 @@ function createPieceByIndex(kingdomName, pieceName, indexOfSquare) {
     piece.setAttribute("class", "piece")
     piece.src = `${Theme.themePath}/${kingdomName}${pieceName}.${Theme.spriteExtension}`
 
-    if (Board[indexOfSquare].children.length > 0) return Board[indexOfSquare].children[0]
-    Board[indexOfSquare].appendChild(piece)
+    if (Board.getRawSquares[indexOfSquare].children.length > 0) return Board.getRawSquares[indexOfSquare].children[0]
+    Board.getRawSquares[indexOfSquare].appendChild(piece)
 
     return piece
 }
 function getPieceByIndex(indexOfSquare) {
-    return Board[indexOfSquare].children[0]
+    return Board.getRawSquares[indexOfSquare].children[0]
 }
 
 function updatePiece(piece, newPice) {
-    if(!piece || !newPice) return
+    if (!piece || !newPice) return
     const parent = piece.parentElement
     const parentChildren = parent.children
     parentChildren[0].remove()
@@ -162,9 +268,9 @@ function updatePiece(piece, newPice) {
     return newPice
 }
 function updatePieceByIndex(newPice, indexOfSquare) {
-    if(!newPice) return
-    const square = Board[indexOfSquare]
-    if(square.children.length == 1) {
+    if (!newPice) return
+    const square = Board.getRawSquares[indexOfSquare]
+    if (square.children.length == 1) {
         square.children[0].remove()
         square.appendChild(newPice)
 
@@ -173,39 +279,38 @@ function updatePieceByIndex(newPice, indexOfSquare) {
 }
 function appendPieceByIndex(piece, indexOfSquare) {
     // move initialize piece or append at empty square:
-    if(!piece) return
-    const square = Board[indexOfSquare]
-    if(square.children.length == 0) {
+    if (!piece) return
+    const square = Board.getRawSquares[indexOfSquare]
+    if (square.children.length == 0) {
         square.appendChild(piece)
 
         return piece
     }
-    
+
 }
 function removePiece(piece) {
     piece.remove()
 }
 function removePieceByIndex(indexOfSquare) {
-    Board[indexOfSquare].children[0].remove()
+    Board.getRawSquares[indexOfSquare].children[0].remove()
 }
 function forcePiece() {
     // force to add piece into empty/occupied square
 }
 function forcePieceByIndex(piece, indexOfSquare) {
     // force to add piece into empty/occupied square by index
-    if(!piece) return
-    const square = Board[indexOfSquare]
-    console.log(square)
-    if(square.children.length == 0){
+    if (!piece) return
+    const square = Board.getRawSquares[indexOfSquare]
+    if (square.children.length == 0) {
         square.appendChild(piece)
         return piece
     }
-    else if(square.children.length == 1){
+    else if (square.children.length == 1) {
         square.children[0].remove()
         square.appendChild(piece)
         return piece
     }
 }
 
-let bishop = createPieceByIndex("black","bishop",1)
-let king = createPiece("white","king")
+let bishop = createPieceByIndex("black", "bishop", 1)
+let king = createPiece("white", "king")
